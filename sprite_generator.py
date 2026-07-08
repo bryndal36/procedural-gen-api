@@ -476,6 +476,164 @@ class SpriteGenerator:
         self.outline(img)
         return img
     
+    def generate_alien_grunt(self, seed: Optional[int] = None) -> Image.Image:
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        img = self.new_img(24, 24)
+        body = [(0.4, 0.9, 0.3), (0.2, 0.7, 0.15), (0.1, 0.4, 0.08)]
+        shell = [(0.6, 0.95, 0.5), (0.35, 0.75, 0.25), (0.2, 0.5, 0.15)]
+        eye = [(1.0, 1.0, 0.3), (0.9, 0.8, 0.1), (0.6, 0.5, 0.05)]
+        
+        self.fill_ellipse(img, 11.5, 12.0, 8.0, 9.0, body, 0.25, 0.3)
+        self.fill_poly(img, [
+            (4, 6), (11.5, 3), (19, 6), (17, 10), (11.5, 8), (6, 10)
+        ], shell, 0.3, 0.3)
+        self.fill_poly(img, [
+            (3, 14), (6, 18), (4, 22), (2, 18)
+        ], body)
+        self.fill_poly(img, [
+            (21, 14), (18, 18), (20, 22), (22, 18)
+        ], body)
+        self.fill_ellipse(img, 11.5, 14.0, 3.0, 2.5, eye, 0.35, 0.3)
+        self.put(img, 10, 13, (1.0, 1.0, 1.0))
+        self.put(img, 13, 13, (1.0, 1.0, 1.0))
+        
+        self.outline(img)
+        return img
+    
+    def generate_alien_drone(self, seed: Optional[int] = None) -> Image.Image:
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        img = self.new_img(20, 20)
+        body = [(0.8, 0.3, 0.9), (0.6, 0.15, 0.7), (0.35, 0.08, 0.45)]
+        wing = [(0.9, 0.5, 1.0), (0.7, 0.3, 0.8), (0.45, 0.18, 0.55)]
+        core = [(1.0, 0.8, 1.0), (0.9, 0.5, 0.9), (0.6, 0.3, 0.6)]
+        
+        self.fill_poly(img, [
+            (10, 2), (16, 8), (14, 16), (6, 16), (4, 8)
+        ], body, 0.25, 0.3)
+        self.fill_poly(img, [
+            (2, 10), (6, 8), (6, 14), (2, 12)
+        ], wing)
+        self.fill_poly(img, [
+            (18, 10), (14, 8), (14, 14), (18, 12)
+        ], wing)
+        self.fill_ellipse(img, 10.0, 10.0, 2.5, 2.5, core, 0.35, 0.3)
+        
+        self.outline(img)
+        return img
+    
+    def generate_mech_grunt(self, seed: Optional[int] = None) -> Image.Image:
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        img = self.new_img(28, 28)
+        armor = [(0.7, 0.75, 0.8), (0.45, 0.5, 0.55), (0.25, 0.28, 0.32)]
+        joint = [(0.5, 0.55, 0.6), (0.35, 0.38, 0.42), (0.2, 0.22, 0.25)]
+        light = [(1.0, 0.3, 0.3), (0.8, 0.15, 0.15), (0.5, 0.08, 0.08)]
+        
+        self.fill_rect(img, 8, 4, 12, 16, armor, 0.25, 0.3)
+        self.fill_rect(img, 6, 8, 2, 8, joint)
+        self.fill_rect(img, 20, 8, 2, 8, joint)
+        self.fill_rect(img, 10, 20, 8, 6, armor)
+        self.fill_rect(img, 12, 2, 4, 3, joint)
+        self.put(img, 13, 8, (1.0, 0.3, 0.3))
+        self.put(img, 14, 8, (1.0, 0.3, 0.3))
+        self.fill_rect(img, 9, 12, 10, 2, self.flat((0.3, 0.32, 0.36)))
+        
+        self.outline(img)
+        return img
+    
+    def generate_mech_drone(self, seed: Optional[int] = None) -> Image.Image:
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        img = self.new_img(22, 22)
+        body = [(0.6, 0.65, 0.7), (0.4, 0.45, 0.5), (0.22, 0.25, 0.28)]
+        accent = [(0.3, 0.8, 1.0), (0.15, 0.6, 0.8), (0.08, 0.35, 0.5)]
+        
+        self.fill_poly(img, [
+            (11, 2), (18, 8), (16, 18), (6, 18), (4, 8)
+        ], body, 0.25, 0.3)
+        self.fill_rect(img, 3, 10, 3, 6, body)
+        self.fill_rect(img, 16, 10, 3, 6, body)
+        self.fill_ellipse(img, 11.0, 11.0, 3.0, 3.0, accent, 0.35, 0.3)
+        self.put(img, 10, 10, (1.0, 1.0, 1.0))
+        self.put(img, 12, 10, (1.0, 1.0, 1.0))
+        
+        self.outline(img)
+        return img
+    
+    def generate_swarm_enemy(self, seed: Optional[int] = None) -> Image.Image:
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        img = self.new_img(12, 12)
+        body = [(1.0, 0.6, 0.2), (0.9, 0.4, 0.1), (0.6, 0.25, 0.05)]
+        
+        self.fill_poly(img, [
+            (6, 1), (10, 6), (6, 11), (2, 6)
+        ], body, 0.25, 0.3)
+        self.put(img, 5, 5, (1.0, 1.0, 0.3))
+        self.put(img, 7, 5, (1.0, 1.0, 0.3))
+        
+        self.outline(img)
+        return img
+    
+    def generate_boss_alien(self, seed: Optional[int] = None) -> Image.Image:
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        img = self.new_img(80, 64)
+        body = [(0.5, 0.9, 0.4), (0.3, 0.7, 0.2), (0.15, 0.45, 0.1)]
+        shell = [(0.7, 1.0, 0.6), (0.45, 0.8, 0.3), (0.25, 0.55, 0.18)]
+        eye = [(1.0, 1.0, 0.4), (0.95, 0.85, 0.2), (0.7, 0.6, 0.1)]
+        tentacle = [(0.6, 0.95, 0.5), (0.4, 0.75, 0.3), (0.22, 0.5, 0.18)]
+        
+        self.fill_ellipse(img, 40.0, 32.0, 30.0, 25.0, body, 0.22, 0.28)
+        self.fill_poly(img, [
+            (15, 12), (40, 5), (65, 12), (60, 25), (40, 20), (20, 25)
+        ], shell, 0.3, 0.3)
+        self.fill_ellipse(img, 40.0, 35.0, 12.0, 10.0, eye, 0.35, 0.3)
+        self.put(img, 35, 32, (1.0, 1.0, 1.0))
+        self.put(img, 45, 32, (1.0, 1.0, 1.0))
+        
+        for i in range(5):
+            x_offset = 15 + i * 12
+            self.fill_poly(img, [
+                (x_offset, 50), (x_offset + 3, 58), (x_offset + 6, 50)
+            ], tentacle)
+        
+        self.mirror_h(img)
+        self.outline(img)
+        return img
+    
+    def generate_boss_mech(self, seed: Optional[int] = None) -> Image.Image:
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        img = self.new_img(88, 72)
+        armor = [(0.65, 0.7, 0.75), (0.42, 0.47, 0.52), (0.24, 0.27, 0.3)]
+        joint = [(0.5, 0.55, 0.6), (0.35, 0.38, 0.42), (0.2, 0.22, 0.25)]
+        core = [(1.0, 0.4, 0.4), (0.85, 0.2, 0.2), (0.55, 0.1, 0.1)]
+        
+        self.fill_rect(img, 20, 8, 48, 50, armor, 0.22, 0.28)
+        self.fill_rect(img, 8, 20, 12, 32, armor)
+        self.fill_rect(img, 68, 20, 12, 32, armor)
+        self.fill_rect(img, 32, 2, 24, 8, joint)
+        self.fill_rect(img, 30, 58, 28, 10, armor)
+        self.fill_ellipse(img, 44.0, 33.0, 10.0, 10.0, core, 0.3, 0.3)
+        self.put(img, 40, 30, (1.0, 1.0, 1.0))
+        self.put(img, 48, 30, (1.0, 1.0, 1.0))
+        
+        for x in [24, 36, 48, 60]:
+            self.fill_rect(img, x, 12, 2, 42, joint)
+        
+        self.outline(img)
+        return img
+    
     def generate_vulcan_bullet(self, seed: Optional[int] = None) -> Image.Image:
         if seed is not None:
             self.rng.seed(seed)

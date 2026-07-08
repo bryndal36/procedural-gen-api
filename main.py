@@ -146,7 +146,7 @@ def get_style_presets():
     }
 
 @app.post("/generate/sprite")
-def generate_sprite(request: SpriteRequest):
+async def generate_sprite(request: SpriteRequest):
     try:
         sprite_map = {
             "player": sprite_gen.generate_player_ship,
@@ -158,8 +158,15 @@ def generate_sprite(request: SpriteRequest):
             "enemy_kamikaze": sprite_gen.generate_enemy_kamikaze,
             "enemy_bomber": sprite_gen.generate_enemy_bomber,
             "enemy_weaver": sprite_gen.generate_enemy_weaver,
+            "alien_grunt": sprite_gen.generate_alien_grunt,
+            "alien_drone": sprite_gen.generate_alien_drone,
+            "mech_grunt": sprite_gen.generate_mech_grunt,
+            "mech_drone": sprite_gen.generate_mech_drone,
+            "swarm_enemy": sprite_gen.generate_swarm_enemy,
             "boss_core": sprite_gen.generate_boss_core,
             "boss_gun": sprite_gen.generate_boss_gun,
+            "boss_alien": sprite_gen.generate_boss_alien,
+            "boss_mech": sprite_gen.generate_boss_mech,
             "vulcan_bullet": sprite_gen.generate_vulcan_bullet,
             "laser_bolt": sprite_gen.generate_laser_bolt,
             "spread_bullet": sprite_gen.generate_spread_bullet,
@@ -210,7 +217,7 @@ def generate_sprite(request: SpriteRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/generate/sprites/batch")
-def generate_sprites_batch(request: BatchSpriteRequest):
+async def generate_sprites_batch(request: BatchSpriteRequest):
     try:
         sprite_map = {
             "player": sprite_gen.generate_player_ship,
@@ -222,8 +229,15 @@ def generate_sprites_batch(request: BatchSpriteRequest):
             "enemy_kamikaze": sprite_gen.generate_enemy_kamikaze,
             "enemy_bomber": sprite_gen.generate_enemy_bomber,
             "enemy_weaver": sprite_gen.generate_enemy_weaver,
+            "alien_grunt": sprite_gen.generate_alien_grunt,
+            "alien_drone": sprite_gen.generate_alien_drone,
+            "mech_grunt": sprite_gen.generate_mech_grunt,
+            "mech_drone": sprite_gen.generate_mech_drone,
+            "swarm_enemy": sprite_gen.generate_swarm_enemy,
             "boss_core": sprite_gen.generate_boss_core,
             "boss_gun": sprite_gen.generate_boss_gun,
+            "boss_alien": sprite_gen.generate_boss_alien,
+            "boss_mech": sprite_gen.generate_boss_mech,
             "vulcan_bullet": sprite_gen.generate_vulcan_bullet,
             "laser_bolt": sprite_gen.generate_laser_bolt,
             "spread_bullet": sprite_gen.generate_spread_bullet,
@@ -351,14 +365,17 @@ def get_sprite_types():
             "ships": ["player"],
             "enemies": ["enemy_grunt", "enemy_drone", "enemy_turret", "enemy_carrier", 
                        "enemy_flanker", "enemy_kamikaze", "enemy_bomber", "enemy_weaver"],
-            "bosses": ["boss_core", "boss_gun"],
+            "aliens": ["alien_grunt", "alien_drone"],
+            "mechs": ["mech_grunt", "mech_drone"],
+            "swarm": ["swarm_enemy"],
+            "bosses": ["boss_core", "boss_gun", "boss_alien", "boss_mech"],
             "projectiles": ["vulcan_bullet", "laser_bolt", "spread_bullet", "missile", "enemy_bullet"],
             "items": ["power_up", "bomb"],
             "effects": ["explosion_sheet", "spark_sheet"],
             "backgrounds": ["background_stars"]
         },
         "description": "Available sprite types for generation",
-        "total": 21,
+        "total": 29,
         "customization": {
             "style_presets": ["retro", "neon", "monochrome", "cyberpunk", "forest", "ocean", "sunset"],
             "custom_colors": "Use primary_color, secondary_color, accent_color (hex format: #RRGGBB)"

@@ -62,10 +62,13 @@ Request body:
 }
 ```
 
-**Available sprite types (21 total):**
+**Available sprite types (29 total):**
 - **Ships**: `player`
 - **Enemies**: `enemy_grunt`, `enemy_drone`, `enemy_turret`, `enemy_carrier`, `enemy_flanker`, `enemy_kamikaze`, `enemy_bomber`, `enemy_weaver`
-- **Bosses**: `boss_core`, `boss_gun`
+- **Aliens**: `alien_grunt`, `alien_drone`
+- **Mechs**: `mech_grunt`, `mech_drone`
+- **Swarm**: `swarm_enemy`
+- **Bosses**: `boss_core`, `boss_gun`, `boss_alien`, `boss_mech`
 - **Projectiles**: `vulcan_bullet`, `laser_bolt`, `spread_bullet`, `missile`, `enemy_bullet`
 - **Items**: `power_up`, `bomb`
 - **Effects**: `explosion_sheet`, `spark_sheet`
