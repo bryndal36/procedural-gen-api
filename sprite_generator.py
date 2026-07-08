@@ -913,3 +913,196 @@ class SpriteGenerator:
                 pixels[x, y] = (new_r, new_g, new_b, a)
         
         return result
+    
+    def generate_player_animated(self, seed: Optional[int] = None, frames: int = 4) -> Image.Image:
+        """Generate animated player ship with engine thrust animation"""
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        base_ship = self.generate_player_ship(seed)
+        frame_width = base_ship.width
+        frame_height = base_ship.height
+        
+        sheet = self.new_img(frame_width * frames, frame_height)
+        
+        for i in range(frames):
+            frame = base_ship.copy()
+            
+            # Add engine thrust animation
+            thrust_length = 4 + (i % 2) * 3  # Alternates between 4 and 7 pixels
+            thrust_colors = [
+                (1.0, 0.9, 0.3, 0.9),  # Bright yellow
+                (1.0, 0.6, 0.1, 0.7),  # Orange
+                (1.0, 0.3, 0.05, 0.5)  # Red-orange
+            ]
+            
+            # Draw thrust flames
+            for y_offset in range(thrust_length):
+                alpha = 0.9 - (y_offset * 0.15)
+                color_idx = min(y_offset // 2, len(thrust_colors) - 1)
+                color = thrust_colors[color_idx]
+                
+                # Left engine
+                self.put(frame, 13, 30 + y_offset, (color[0], color[1], color[2], color[3]))
+                self.put(frame, 14, 30 + y_offset, (color[0], color[1], color[2], color[3]))
+                
+                # Right engine
+                self.put(frame, 17, 30 + y_offset, (color[0], color[1], color[2], color[3]))
+                self.put(frame, 18, 30 + y_offset, (color[0], color[1], color[2], color[3]))
+            
+            sheet.paste(frame, (i * frame_width, 0))
+        
+        return sheet
+    
+    def generate_enemy_animated(self, enemy_type: str, seed: Optional[int] = None, frames: int = 4) -> Image.Image:
+        """Generate animated enemy sprite with idle/firing animation"""
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        # Map enemy types to their generation functions
+        enemy_map = {
+            "enemy_grunt": self.generate_enemy_grunt,
+            "enemy_drone": self.generate_enemy_drone,
+            "enemy_turret": self.generate_enemy_turret,
+            "alien_grunt": self.generate_alien_grunt,
+            "mech_grunt": self.generate_mech_grunt,
+        }
+        
+        if enemy_type not in enemy_map:
+            raise ValueError(f"Animation not available for {enemy_type}")
+        
+        base_enemy = enemy_map[enemy_type](seed)
+        frame_width = base_enemy.width
+        frame_height = base_enemy.height
+        
+        sheet = self.new_img(frame_width * frames, frame_height)
+        
+        for i in range(frames):
+            frame = base_enemy.copy()
+            
+            # Add subtle pulsing animation
+            pulse_intensity = 0.1 + (i / frames) * 0.2
+            
+            # Add glow effect to specific pixels based on enemy type
+            if enemy_type in ["enemy_turret", "mech_grunt"]:
+                # Turret/mech: pulse the weapon/core
+                glow_color = (1.0, 0.5, 0.2, pulse_intensity)
+                center_x = frame_width // 2
+                center_y = frame_height // 2
+                for dx in range(-2, 3):
+                    for dy in range(-2, 3):
+                        if 0 <= center_x + dx < frame_width and 0 <= center_y + dy < frame_height:
+                            self.put(frame, center_x + dx, center_y + dy, glow_color)
+            else:
+                # Other enemies: subtle body pulse
+                pixels = frame.load()
+                for y in range(frame_height):
+                    for x in range(frame_width):
+                        r, g, b, a = pixels[x, y]
+                        if a > 0:
+                            # Slight brightness variation
+                            brightness = 1.0 + (pulse_intensity * 0.3 * ((i % 2) * 2 - 1))
+                            new_r = min(255, int(r * brightness))
+                            new_g = min(255, int(g * brightness))
+                            new_b = min(255, int(b * brightness))
+                            pixels[x, y] = (new_r, new_g, new_b, a)
+            
+            sheet.paste(frame, (i * frame_width, 0))
+        
+        return sheet
+    
+    def generate_firing_animation(self, sprite_type: str, seed: Optional[int] = None, frames: int = 6) -> Image.Image:
+        """Generate firing animation with muzzle flash"""
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        # Get base sprite
+        sprite_map = {
+            "player": self.generate_player_ship,
+            "enemy_turret": self.generate_enemy_turret,
+            "mech_grunt": self.generate_mech_grunt,
+        }
+        
+        if sprite_type not in sprite_map:
+            raise ValueError(f"Firing animation not available for {sprite_type}")
+        
+        base_sprite = sprite_map[sprite_type](seed)
+        frame_width = base_sprite.width
+        frame_height = base_sprite.height
+        
+        sheet = self.new_img(frame_width * frames, frame_height)
+        
+        for i in range(frames):
+            frame = base_sprite.copy()
+            
+            # Add muzzle flash in early frames
+            if i < 3:
+                flash_intensity = 1.0 - (i * 0.3)
+                flash_size = 3 + i
+                
+                # Determine flash position based on sprite type
+                if sprite_type == "player":
+                    flash_x = frame_width // 2
+                    flash_y = 2
+                else:
+                    flash_x = frame_width // 2
+                    flash_y = frame_height - 3
+                
+                # Draw flash
+                for dx in range(-flash_size, flash_size + 1):
+                    for dy in range(-flash_size, flash_size + 1):
+                        distance = (dx * dx + dy * dy) ** 0.5
+                        if distance <= flash_size:
+                            alpha = flash_intensity * (1.0 - distance / flash_size)
+                            px, py = flash_x + dx, flash_y + dy
+                            if 0 <= px < frame_width and 0 <= py < frame_height:
+                                self.put(frame, px, py, (1.0, 0.9, 0.3, alpha))
+            
+            sheet.paste(frame, (i * frame_width, 0))
+        
+        return sheet
+    
+    def generate_damaged_state(self, sprite_type: str, seed: Optional[int] = None) -> Image.Image:
+        """Generate damaged version of a sprite"""
+        if seed is not None:
+            self.rng.seed(seed)
+        
+        # Get base sprite
+        sprite_map = {
+            "player": self.generate_player_ship,
+            "enemy_grunt": self.generate_enemy_grunt,
+            "enemy_turret": self.generate_enemy_turret,
+            "alien_grunt": self.generate_alien_grunt,
+            "mech_grunt": self.generate_mech_grunt,
+        }
+        
+        if sprite_type not in sprite_map:
+            raise ValueError(f"Damaged state not available for {sprite_type}")
+        
+        base_sprite = sprite_map[sprite_type](seed)
+        damaged = base_sprite.copy()
+        
+        pixels = damaged.load()
+        width, height = damaged.size
+        
+        # Add damage effects
+        for _ in range(15):  # 15 damage spots
+            x = self.rng.randint(0, width - 1)
+            y = self.rng.randint(0, height - 1)
+            
+            # Only damage non-transparent pixels
+            if pixels[x, y][3] > 0:
+                # Darken the pixel
+                r, g, b, a = pixels[x, y]
+                pixels[x, y] = (r // 2, g // 2, b // 2, a)
+                
+                # Add smoke/fire effect
+                if self.rng.random() < 0.3:
+                    smoke_color = (0.3, 0.3, 0.3, 0.6)
+                    for dx in range(-1, 2):
+                        for dy in range(-1, 2):
+                            px, py = x + dx, y + dy
+                            if 0 <= px < width and 0 <= py < height:
+                                self.put(damaged, px, py, smoke_color)
+        
+        return damaged

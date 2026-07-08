@@ -47,12 +47,15 @@ class BatchSoundRequest(BaseModel):
 def read_root():
     return {
         "message": "Procedural Asset Generation API",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "endpoints": {
             "sprites": "/generate/sprite",
             "sprites_batch": "/generate/sprites/batch",
             "sounds": "/generate/sound",
             "sounds_batch": "/generate/sounds/batch",
+            "animated": "/generate/animated",
+            "firing_animation": "/generate/firing",
+            "damaged_state": "/generate/damaged",
             "sprite_types": "/sprites/types",
             "sound_types": "/sounds/types",
             "style_presets": "/styles/presets"
@@ -216,6 +219,140 @@ async def generate_sprite(request: SpriteRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/generate/animated")
+async def generate_animated_sprite(request: SpriteRequest):
+    try:
+        animation_map = {
+            "player": lambda seed: sprite_gen.generate_player_animated(seed, 4),
+            "enemy_grunt": lambda seed: sprite_gen.generate_enemy_animated("enemy_grunt", seed, 4),
+            "enemy_drone": lambda seed: sprite_gen.generate_enemy_animated("enemy_drone", seed, 4),
+            "enemy_turret": lambda seed: sprite_gen.generate_enemy_animated("enemy_turret", seed, 4),
+            "alien_grunt": lambda seed: sprite_gen.generate_enemy_animated("alien_grunt", seed, 4),
+            "mech_grunt": lambda seed: sprite_gen.generate_enemy_animated("mech_grunt", seed, 4),
+        }
+        
+        if request.type not in animation_map:
+            raise HTTPException(status_code=400, detail=f"Animation not available for: {request.type}")
+
+        if request.style:
+            style_colors = get_style_colors(request.style)
+            if style_colors:
+                request.primary_color = request.primary_color or style_colors["primary"]
+                request.secondary_color = request.secondary_color or style_colors["secondary"]
+                request.accent_color = request.accent_color or style_colors["accent"]
+
+        img = animation_map[request.type](request.seed)
+
+        if request.primary_color or request.secondary_color or request.accent_color:
+            img = sprite_gen.apply_color_tint(
+                img,
+                primary_color=parse_color(request.primary_color),
+                secondary_color=parse_color(request.secondary_color),
+                accent_color=parse_color(request.accent_color)
+            )
+
+        if request.size and request.size != img.width:
+            aspect = img.height / img.width
+            new_height = int(request.size * aspect)
+            img = img.resize((request.size, new_height), resample=0)
+
+        img_bytes = io.BytesIO()
+        img.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+
+        return StreamingResponse(img_bytes, media_type="image/png")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate/firing")
+async def generate_firing_animation(request: SpriteRequest):
+    try:
+        firing_map = {
+            "player": lambda seed: sprite_gen.generate_firing_animation("player", seed, 6),
+            "enemy_turret": lambda seed: sprite_gen.generate_firing_animation("enemy_turret", seed, 6),
+            "mech_grunt": lambda seed: sprite_gen.generate_firing_animation("mech_grunt", seed, 6),
+        }
+        
+        if request.type not in firing_map:
+            raise HTTPException(status_code=400, detail=f"Firing animation not available for: {request.type}")
+
+        if request.style:
+            style_colors = get_style_colors(request.style)
+            if style_colors:
+                request.primary_color = request.primary_color or style_colors["primary"]
+                request.secondary_color = request.secondary_color or style_colors["secondary"]
+                request.accent_color = request.accent_color or style_colors["accent"]
+
+        img = firing_map[request.type](request.seed)
+
+        if request.primary_color or request.secondary_color or request.accent_color:
+            img = sprite_gen.apply_color_tint(
+                img,
+                primary_color=parse_color(request.primary_color),
+                secondary_color=parse_color(request.secondary_color),
+                accent_color=parse_color(request.accent_color)
+            )
+
+        if request.size and request.size != img.width:
+            aspect = img.height / img.width
+            new_height = int(request.size * aspect)
+            img = img.resize((request.size, new_height), resample=0)
+
+        img_bytes = io.BytesIO()
+        img.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+
+        return StreamingResponse(img_bytes, media_type="image/png")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate/damaged")
+async def generate_damaged_sprite(request: SpriteRequest):
+    try:
+        damaged_map = {
+            "player": lambda seed: sprite_gen.generate_damaged_state("player", seed),
+            "enemy_grunt": lambda seed: sprite_gen.generate_damaged_state("enemy_grunt", seed),
+            "enemy_turret": lambda seed: sprite_gen.generate_damaged_state("enemy_turret", seed),
+            "alien_grunt": lambda seed: sprite_gen.generate_damaged_state("alien_grunt", seed),
+            "mech_grunt": lambda seed: sprite_gen.generate_damaged_state("mech_grunt", seed),
+        }
+        
+        if request.type not in damaged_map:
+            raise HTTPException(status_code=400, detail=f"Damaged state not available for: {request.type}")
+
+        if request.style:
+            style_colors = get_style_colors(request.style)
+            if style_colors:
+                request.primary_color = request.primary_color or style_colors["primary"]
+                request.secondary_color = request.secondary_color or style_colors["secondary"]
+                request.accent_color = request.accent_color or style_colors["accent"]
+
+        img = damaged_map[request.type](request.seed)
+
+        if request.primary_color or request.secondary_color or request.accent_color:
+            img = sprite_gen.apply_color_tint(
+                img,
+                primary_color=parse_color(request.primary_color),
+                secondary_color=parse_color(request.secondary_color),
+                accent_color=parse_color(request.accent_color)
+            )
+
+        if request.size and request.size != img.width:
+            aspect = img.height / img.width
+            new_height = int(request.size * aspect)
+            img = img.resize((request.size, new_height), resample=0)
+
+        img_bytes = io.BytesIO()
+        img.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+
+        return StreamingResponse(img_bytes, media_type="image/png")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/generate/sprites/batch")
 async def generate_sprites_batch(request: BatchSpriteRequest):
     try:
@@ -350,6 +487,16 @@ def generate_sound(request: SoundRequest):
             wav_bytes = sound_gen.generate_explosion_large(request.seed)
         elif request.type == "player_death":
             wav_bytes = sound_gen.generate_player_death(request.seed)
+        elif request.type == "ui_click":
+            wav_bytes = sound_gen.generate_ui_click(request.seed)
+        elif request.type == "ui_hover":
+            wav_bytes = sound_gen.generate_ui_hover(request.seed)
+        elif request.type == "ui_confirm":
+            wav_bytes = sound_gen.generate_ui_confirm(request.seed)
+        elif request.type == "ui_cancel":
+            wav_bytes = sound_gen.generate_ui_cancel(request.seed)
+        elif request.type == "powerup":
+            wav_bytes = sound_gen.generate_powerup_sound(request.seed)
         else:
             raise HTTPException(status_code=400, detail=f"Unknown sound type: {request.type}")
         
@@ -374,8 +521,18 @@ def get_sprite_types():
             "effects": ["explosion_sheet", "spark_sheet"],
             "backgrounds": ["background_stars"]
         },
+        "animations": {
+            "animated_sheets": ["player", "enemy_grunt", "enemy_drone", "enemy_turret", "alien_grunt", "mech_grunt"],
+            "firing_animations": ["player", "enemy_turret", "mech_grunt"],
+            "damaged_states": ["player", "enemy_grunt", "enemy_turret", "alien_grunt", "mech_grunt"]
+        },
         "description": "Available sprite types for generation",
         "total": 29,
+        "animation_endpoints": {
+            "animated": "/generate/animated (sprite sheet with 4 frames)",
+            "firing": "/generate/firing (weapon fire animation with 6 frames)",
+            "damaged": "/generate/damaged (single damaged state sprite)"
+        },
         "customization": {
             "style_presets": ["retro", "neon", "monochrome", "cyberpunk", "forest", "ocean", "sunset"],
             "custom_colors": "Use primary_color, secondary_color, accent_color (hex format: #RRGGBB)"
