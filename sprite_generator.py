@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw
 import math
+import time
 from typing import List, Tuple, Optional
 import random
 
@@ -114,24 +115,31 @@ class SpriteGenerator:
             self.put(img, x, y, col)
     
     def generate_player_ship(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(32, 32)
-        hull = [(0.85, 0.9, 0.98), (0.55, 0.65, 0.85), (0.3, 0.38, 0.6)]
+        wing_tip = self.rng.randint(1, 4)
+        color_shift = self.rng.uniform(-0.08, 0.08)
+        glass_shift = self.rng.uniform(-0.1, 0.1)
+        hull_light = self.rng.uniform(0.18, 0.28)
+        hull_dark = self.rng.uniform(0.2, 0.32)
+
+        hull = [(0.85, 0.9 + color_shift, 0.98), (0.55, 0.65 + color_shift, 0.85), (0.3, 0.38 + color_shift, 0.6)]
         wing = [(0.72, 0.76, 0.85), (0.5, 0.55, 0.66), (0.32, 0.36, 0.46)]
-        glass = [(0.7, 0.95, 1.0), (0.25, 0.7, 0.95), (0.1, 0.35, 0.7)]
+        glass = [(0.7 + glass_shift, 0.95, 1.0), (0.25 + glass_shift, 0.7, 0.95), (0.1, 0.35, 0.7)]
         red = (0.85, 0.2, 0.25)
-        
-        self.fill_poly(img, [(2, 17), (13, 12), (13, 26), (7, 24), (2, 21)], wing)
-        self.fill_poly(img, [(2, 17), (13, 12), (13, 14), (3, 19)], self.flat(red))
+        stripe_color = self.rng.choice([(0.85, 0.2, 0.25), (0.2, 0.6, 0.85), (0.95, 0.7, 0.15)])
+        has_stripe = self.rng.random() < 0.5
+
+        self.fill_poly(img, [(wing_tip, 17), (13, 12), (13, 26), (7, 24), (wing_tip, 21)], wing)
+        self.fill_poly(img, [(wing_tip, 17), (13, 12), (13, 14), (3 + wing_tip, 19)], self.flat(red))
         self.fill_rect(img, 1, 15, 2, 7, [(0.6, 0.64, 0.72), (0.42, 0.46, 0.54), (0.28, 0.31, 0.38)])
         self.fill_poly(img, [(8, 23), (11, 21), (11, 29), (9, 28)], wing)
         self.fill_poly(img, [
             (15.5, 0.5), (13, 7), (12, 15), (12, 22),
             (13.5, 29), (15.5, 30.5), (17.5, 29), (19, 22),
             (19, 15), (18, 7),
-        ], hull, 0.22, 0.26)
+        ], hull, hull_light, hull_dark)
         self.fill_rect(img, 12, 16, 1, 6, self.flat((0.24, 0.3, 0.5)))
         self.fill_ellipse(img, 15.5, 12.5, 2.4, 4.0, glass, 0.28, 0.3)
         self.put(img, 15, 10, (0.9, 1.0, 1.0))
@@ -141,89 +149,115 @@ class SpriteGenerator:
         self.fill_rect(img, 13, 28, 6, 2, self.flat((0.3, 0.33, 0.4)))
         for x in range(14, 18):
             self.put(img, x, 29, (0.55, 0.9, 1.0))
-        
+        if has_stripe:
+            for x in range(12, 20):
+                self.put(img, x, 19, stripe_color)
+                self.put(img, x, 20, stripe_color)
+
         self.mirror_h(img)
         self.outline(img)
         return img
     
     def generate_enemy_grunt(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(24, 24)
-        body = [(1.0, 0.55, 0.45), (0.82, 0.22, 0.2), (0.5, 0.1, 0.12)]
-        dark = [(0.62, 0.16, 0.16), (0.5, 0.1, 0.12), (0.34, 0.06, 0.09)]
-        glass = [(0.5, 0.85, 0.9), (0.15, 0.5, 0.6), (0.05, 0.25, 0.35)]
-        
-        self.fill_poly(img, [(1, 4), (10, 3), (10, 13), (5, 11), (1, 8)], body)
-        self.fill_poly(img, [(1, 4), (10, 3), (10, 5), (2, 6)], dark)
+        body_shift = self.rng.uniform(-0.1, 0.1)
+        glass_shift = self.rng.uniform(-0.1, 0.1)
+        width_shift = self.rng.randint(-2, 2)
+        has_antenna = self.rng.random() < 0.4
+        antenna_height = self.rng.randint(1, 3)
+
+        body = [(1.0, 0.55 + body_shift, 0.45), (0.82, 0.22 + body_shift, 0.2), (0.5, 0.1 + body_shift, 0.12)]
+        body = [tuple(max(0, min(1, c)) for c in ramp) for ramp in body]
+        dark = [(0.62, 0.16 + body_shift, 0.16), (0.5, 0.1 + body_shift, 0.12), (0.34, 0.06 + body_shift, 0.09)]
+        dark = [tuple(max(0, min(1, c)) for c in ramp) for ramp in dark]
+        glass = [(0.5 + glass_shift, 0.85, 0.9), (0.15 + glass_shift, 0.5, 0.6), (0.05, 0.25, 0.35)]
+
+        self.fill_poly(img, [(1, 4), (10 + width_shift, 3), (10 + width_shift, 13), (5, 11), (1, 8)], body)
+        self.fill_poly(img, [(1, 4), (10 + width_shift, 3), (10 + width_shift, 5), (2, 6)], dark)
         self.fill_rect(img, 3, 2, 3, 4, [(0.5, 0.52, 0.58), (0.36, 0.38, 0.44), (0.22, 0.24, 0.3)])
+        right = 11.5 + width_shift * 0.5
         self.fill_poly(img, [
-            (11.5, 1.5), (9, 6), (8.5, 13), (10, 19),
-            (11.5, 22.5), (13, 19), (14.5, 13), (14, 6),
+            (right, 1.5), (9 + width_shift, 6), (8.5 + width_shift, 13), (10 + width_shift, 19),
+            (right, 22.5), (13 + width_shift, 19), (14.5 + width_shift, 13), (14 + width_shift, 6),
         ], body, 0.25, 0.3)
-        self.fill_ellipse(img, 11.5, 13.0, 2.0, 3.0, glass)
+        self.fill_ellipse(img, right, 13.0, 2.0, 3.0, glass)
         self.put(img, 1, 8, (0.3, 0.06, 0.08))
         self.put(img, 1, 9, (0.3, 0.06, 0.08))
-        
+        if has_antenna:
+            for ay in range(antenna_height):
+                self.put(img, 11 + width_shift, 1 - ay, (0.6, 0.6, 0.7))
+
         self.mirror_h(img)
         self.outline(img)
         return img
     
     def generate_enemy_drone(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(16, 16)
-        body = [(1.0, 0.8, 0.35), (0.95, 0.55, 0.15), (0.6, 0.3, 0.08)]
-        fin = [(0.8, 0.45, 0.12), (0.6, 0.3, 0.08), (0.4, 0.18, 0.04)]
-        
-        self.fill_poly(img, [(1, 3), (6, 5), (6, 11), (3, 9)], fin)
+        body_shift = self.rng.uniform(-0.1, 0.1)
+        fin_offset = self.rng.randint(-1, 1)
+        core_glow = self.rng.uniform(0.6, 1.0)
+
+        body = [(1.0, 0.8 + body_shift, 0.35), (0.95, 0.55 + body_shift, 0.15), (0.6, 0.3 + body_shift, 0.08)]
+        body = [tuple(max(0, min(1, c)) for c in ramp) for ramp in body]
+        fin = [(0.8, 0.45 + body_shift, 0.12), (0.6, 0.3 + body_shift, 0.08), (0.4, 0.18 + body_shift, 0.04)]
+        fin = [tuple(max(0, min(1, c)) for c in ramp) for ramp in fin]
+
+        self.fill_poly(img, [(1, 3 + fin_offset), (6, 5), (6, 11), (3, 9 + fin_offset)], fin)
         self.fill_poly(img, [
             (7.5, 1.0), (5.5, 5), (5, 9), (7.5, 14.5),
             (10, 9), (9.5, 5),
         ], body, 0.25, 0.3)
-        self.fill_ellipse(img, 7.5, 7.0, 1.6, 2.2, self.flat((1.0, 0.95, 0.6)))
+        self.fill_ellipse(img, 7.5, 7.0, 1.6, 2.2, self.flat((core_glow, core_glow * 0.95, core_glow * 0.6)))
         self.put(img, 7, 1, (0.45, 0.2, 0.05))
         self.put(img, 8, 1, (0.45, 0.2, 0.05))
-        
+
         self.mirror_h(img)
         self.outline(img)
         return img
     
     def generate_enemy_turret(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(32, 32)
-        armor = [(0.8, 0.55, 0.95), (0.55, 0.28, 0.75), (0.32, 0.15, 0.5)]
-        inner = self.flat((0.24, 0.1, 0.38))
-        dome = [(0.9, 0.7, 1.0), (0.65, 0.38, 0.85), (0.4, 0.2, 0.58)]
+        color_shift = self.rng.uniform(-0.08, 0.08)
+        barrel_extra = self.rng.randint(-3, 3)
+        dome_vary = self.rng.uniform(-0.5, 0.5)
+
+        armor = [(0.8, 0.55 + color_shift, 0.95), (0.55, 0.28 + color_shift, 0.75), (0.32, 0.15 + color_shift, 0.5)]
+        armor = [tuple(max(0, min(1, c)) for c in ramp) for ramp in armor]
+        inner = self.flat((0.24, 0.1 + color_shift, 0.38))
+        dome = [(0.9, 0.7 + color_shift, 1.0), (0.65, 0.38 + color_shift, 0.85), (0.4, 0.2 + color_shift, 0.58)]
+        dome = [tuple(max(0, min(1, c)) for c in ramp) for ramp in dome]
         barrel = [(0.6, 0.62, 0.7), (0.42, 0.44, 0.52), (0.26, 0.28, 0.35)]
-        
+
         self.fill_poly(img, [
             (9, 2), (22, 2), (28, 9), (28, 20),
             (22, 26), (9, 26), (3, 20), (3, 9),
         ], armor, 0.26, 0.28)
         self.fill_ellipse(img, 15.5, 14.0, 8.5, 8.5, inner)
-        self.fill_ellipse(img, 15.5, 13.5, 5.5, 5.5, dome, 0.3, 0.3)
+        self.fill_ellipse(img, 15.5, 13.5, 5.5 + dome_vary, 5.5 + dome_vary, dome, 0.3, 0.3)
         self.put(img, 14, 10, (0.95, 0.85, 1.0))
         self.put(img, 15, 10, (0.95, 0.85, 1.0))
-        self.fill_rect(img, 14, 18, 4, 10, barrel)
-        self.fill_rect(img, 13, 27, 6, 2, self.flat((0.2, 0.22, 0.28)))
+        self.fill_rect(img, 14, 18, 4, 10 + barrel_extra, barrel)
+        self.fill_rect(img, 13, 27 + barrel_extra, 6, 2, self.flat((0.2, 0.22, 0.28)))
         for bx, by in [(6, 6), (25, 6), (6, 22), (25, 22)]:
             self.put(img, bx, by, (0.9, 0.75, 1.0))
-        
+
         self.outline(img)
         return img
     
     def generate_enemy_carrier(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(48, 48)
-        hull = [(1.0, 0.9, 0.5), (0.9, 0.72, 0.2), (0.6, 0.45, 0.1)]
-        plate = self.flat((0.55, 0.42, 0.1))
+        cs = self.rng.uniform(-0.08, 0.08)
+        hull = [(1.0, 0.9 + cs, 0.5), (0.9, 0.72 + cs, 0.2), (0.6, 0.45 + cs, 0.1)]
+        hull = [tuple(max(0, min(1, c)) for c in r) for r in hull]
+        plate = self.flat((0.55, 0.42 + cs, 0.1))
         bay = [(0.32, 0.34, 0.4), (0.22, 0.24, 0.3), (0.13, 0.14, 0.19)]
         pod = [(0.5, 0.52, 0.58), (0.36, 0.38, 0.44), (0.22, 0.24, 0.3)]
         
@@ -250,12 +284,14 @@ class SpriteGenerator:
         return img
     
     def generate_enemy_flanker(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(32, 16)
-        body = [(0.6, 0.9, 1.0), (0.2, 0.7, 0.85), (0.1, 0.4, 0.6)]
-        wing = [(0.5, 0.85, 0.95), (0.15, 0.6, 0.75), (0.08, 0.35, 0.5)]
+        cs = self.rng.uniform(-0.1, 0.1)
+        body = [(0.6, 0.9 + cs, 1.0), (0.2, 0.7 + cs, 0.85), (0.1, 0.4 + cs, 0.6)]
+        body = [tuple(max(0, min(1, c)) for c in r) for r in body]
+        wing = [(0.5, 0.85 + cs, 0.95), (0.15, 0.6 + cs, 0.75), (0.08, 0.35 + cs, 0.5)]
+        wing = [tuple(max(0, min(1, c)) for c in r) for r in wing]
         glass = [(0.7, 0.95, 1.0), (0.25, 0.7, 0.95), (0.1, 0.35, 0.7)]
         dark = (0.08, 0.3, 0.45)
         
@@ -284,14 +320,15 @@ class SpriteGenerator:
         return img
     
     def generate_enemy_kamikaze(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(24, 24)
-        body = [(1.0, 0.7, 0.4), (0.95, 0.45, 0.2), (0.7, 0.25, 0.1)]
+        cs = self.rng.uniform(-0.1, 0.1)
+        body = [(1.0, 0.7 + cs, 0.4), (0.95, 0.45 + cs, 0.2), (0.7, 0.25 + cs, 0.1)]
+        body = [tuple(max(0, min(1, c)) for c in r) for r in body]
         nose = [(1.0, 0.95, 0.6), (1.0, 0.8, 0.3), (0.9, 0.6, 0.15)]
         glass = [(0.9, 0.95, 1.0), (0.6, 0.8, 0.95), (0.3, 0.5, 0.8)]
-        dark = (0.6, 0.2, 0.08)
+        dark = (0.6, 0.2 + cs, 0.08)
         
         self.fill_poly(img, [
             (12, 2), (6, 10), (4, 18), (8, 22),
@@ -321,14 +358,16 @@ class SpriteGenerator:
         return img
     
     def generate_enemy_bomber(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(44, 24)
-        body = [(0.85, 0.55, 1.0), (0.6, 0.3, 0.8), (0.4, 0.18, 0.55)]
-        wing = [(0.75, 0.45, 0.9), (0.5, 0.25, 0.7), (0.32, 0.15, 0.5)]
+        cs = self.rng.uniform(-0.1, 0.1)
+        body = [(0.85, 0.55 + cs, 1.0), (0.6, 0.3 + cs, 0.8), (0.4, 0.18 + cs, 0.55)]
+        body = [tuple(max(0, min(1, c)) for c in r) for r in body]
+        wing = [(0.75, 0.45 + cs, 0.9), (0.5, 0.25 + cs, 0.7), (0.32, 0.15 + cs, 0.5)]
+        wing = [tuple(max(0, min(1, c)) for c in r) for r in wing]
         glass = [(0.8, 0.9, 1.0), (0.4, 0.6, 0.85), (0.2, 0.35, 0.65)]
-        dark = (0.35, 0.15, 0.5)
+        dark = (0.35, 0.15 + cs, 0.5)
         
         self.fill_poly(img, [
             (12, 7), (32, 7), (36, 12), (32, 17), (12, 17)
@@ -373,12 +412,14 @@ class SpriteGenerator:
         return img
     
     def generate_enemy_weaver(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(28, 28)
-        body = [(0.7, 1.0, 0.6), (0.4, 0.9, 0.3), (0.25, 0.6, 0.2)]
-        core = [(0.9, 1.0, 0.8), (0.6, 0.95, 0.5), (0.4, 0.7, 0.3)]
+        cs = self.rng.uniform(-0.1, 0.1)
+        body = [(0.7, 1.0 + cs, 0.6), (0.4, 0.9 + cs, 0.3), (0.25, 0.6 + cs, 0.2)]
+        body = [tuple(max(0, min(1, c)) for c in r) for r in body]
+        core = [(0.9, 1.0 + cs, 0.8), (0.6, 0.95 + cs, 0.5), (0.4, 0.7 + cs, 0.3)]
+        core = [tuple(max(0, min(1, c)) for c in r) for r in core]
         glass = [(0.95, 1.0, 0.95), (0.7, 0.9, 0.75), (0.4, 0.65, 0.5)]
         dark = (0.2, 0.5, 0.15)
         
@@ -419,12 +460,14 @@ class SpriteGenerator:
         return img
     
     def generate_boss_core(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(96, 72)
-        hull = [(0.62, 0.66, 0.74), (0.42, 0.46, 0.55), (0.24, 0.27, 0.35)]
-        deck = [(0.4, 0.44, 0.52), (0.3, 0.33, 0.4), (0.19, 0.21, 0.27)]
+        cs = self.rng.uniform(-0.06, 0.06)
+        hull = [(0.62 + cs, 0.66 + cs, 0.74), (0.42 + cs, 0.46 + cs, 0.55), (0.24 + cs, 0.27 + cs, 0.35)]
+        hull = [tuple(max(0, min(1, c)) for c in r) for r in hull]
+        deck = [(0.4 + cs, 0.44 + cs, 0.52), (0.3 + cs, 0.33 + cs, 0.4), (0.19 + cs, 0.21 + cs, 0.27)]
+        deck = [tuple(max(0, min(1, c)) for c in r) for r in deck]
         rib = self.flat((0.2, 0.22, 0.29))
         core = [(1.0, 0.6, 0.55), (0.9, 0.15, 0.2), (0.5, 0.05, 0.1)]
         trim = self.flat((0.75, 0.16, 0.2))
@@ -455,11 +498,12 @@ class SpriteGenerator:
         return img
     
     def generate_boss_gun(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(28, 28)
-        armor = [(0.95, 0.62, 0.3), (0.75, 0.42, 0.16), (0.45, 0.24, 0.08)]
+        cs = self.rng.uniform(-0.08, 0.08)
+        armor = [(0.95, 0.62 + cs, 0.3), (0.75, 0.42 + cs, 0.16), (0.45, 0.24 + cs, 0.08)]
+        armor = [tuple(max(0, min(1, c)) for c in r) for r in armor]
         barrel = [(0.55, 0.57, 0.64), (0.4, 0.42, 0.5), (0.25, 0.27, 0.34)]
         
         self.fill_poly(img, [
@@ -477,39 +521,48 @@ class SpriteGenerator:
         return img
     
     def generate_alien_grunt(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(24, 24)
-        body = [(0.4, 0.9, 0.3), (0.2, 0.7, 0.15), (0.1, 0.4, 0.08)]
-        shell = [(0.6, 0.95, 0.5), (0.35, 0.75, 0.25), (0.2, 0.5, 0.15)]
-        eye = [(1.0, 1.0, 0.3), (0.9, 0.8, 0.1), (0.6, 0.5, 0.05)]
-        
-        self.fill_ellipse(img, 11.5, 12.0, 8.0, 9.0, body, 0.25, 0.3)
+        body_shift = self.rng.uniform(-0.1, 0.1)
+        shell_shift = self.rng.uniform(-0.1, 0.1)
+        radius_vary = self.rng.uniform(-1.0, 1.0)
+        leg_offset = self.rng.randint(-2, 2)
+
+        body = [(0.4, 0.9 + body_shift, 0.3), (0.2, 0.7 + body_shift, 0.15), (0.1, 0.4 + body_shift, 0.08)]
+        body = [tuple(max(0, min(1, c)) for c in ramp) for ramp in body]
+        shell = [(0.6, 0.95 + shell_shift, 0.5), (0.35, 0.75 + shell_shift, 0.25), (0.2, 0.5 + shell_shift, 0.15)]
+        shell = [tuple(max(0, min(1, c)) for c in ramp) for ramp in shell]
+        eye = [(1.0, 1.0, 0.3), (0.9, 0.8 + body_shift, 0.1), (0.6, 0.5 + body_shift, 0.05)]
+
+        self.fill_ellipse(img, 11.5, 12.0, 8.0 + radius_vary, 9.0 + radius_vary * 0.5, body, 0.25, 0.3)
         self.fill_poly(img, [
             (4, 6), (11.5, 3), (19, 6), (17, 10), (11.5, 8), (6, 10)
         ], shell, 0.3, 0.3)
         self.fill_poly(img, [
-            (3, 14), (6, 18), (4, 22), (2, 18)
+            (3, 14 + leg_offset), (6, 18), (4, 22), (2, 18)
         ], body)
         self.fill_poly(img, [
-            (21, 14), (18, 18), (20, 22), (22, 18)
+            (21, 14 + leg_offset), (18, 18), (20, 22), (22, 18)
         ], body)
         self.fill_ellipse(img, 11.5, 14.0, 3.0, 2.5, eye, 0.35, 0.3)
         self.put(img, 10, 13, (1.0, 1.0, 1.0))
         self.put(img, 13, 13, (1.0, 1.0, 1.0))
-        
+
         self.outline(img)
         return img
     
     def generate_alien_drone(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(20, 20)
-        body = [(0.8, 0.3, 0.9), (0.6, 0.15, 0.7), (0.35, 0.08, 0.45)]
-        wing = [(0.9, 0.5, 1.0), (0.7, 0.3, 0.8), (0.45, 0.18, 0.55)]
-        core = [(1.0, 0.8, 1.0), (0.9, 0.5, 0.9), (0.6, 0.3, 0.6)]
+        cs = self.rng.uniform(-0.1, 0.1)
+        body = [(0.8, 0.3 + cs, 0.9), (0.6, 0.15 + cs, 0.7), (0.35, 0.08 + cs, 0.45)]
+        body = [tuple(max(0, min(1, c)) for c in r) for r in body]
+        wing = [(0.9, 0.5 + cs, 1.0), (0.7, 0.3 + cs, 0.8), (0.45, 0.18 + cs, 0.55)]
+        wing = [tuple(max(0, min(1, c)) for c in r) for r in wing]
+        core = [(1.0, 0.8 + cs, 1.0), (0.9, 0.5 + cs, 0.9), (0.6, 0.3 + cs, 0.6)]
+        core = [tuple(max(0, min(1, c)) for c in r) for r in core]
         
         self.fill_poly(img, [
             (10, 2), (16, 8), (14, 16), (6, 16), (4, 8)
@@ -526,33 +579,41 @@ class SpriteGenerator:
         return img
     
     def generate_mech_grunt(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(28, 28)
-        armor = [(0.7, 0.75, 0.8), (0.45, 0.5, 0.55), (0.25, 0.28, 0.32)]
-        joint = [(0.5, 0.55, 0.6), (0.35, 0.38, 0.42), (0.2, 0.22, 0.25)]
-        light = [(1.0, 0.3, 0.3), (0.8, 0.15, 0.15), (0.5, 0.08, 0.08)]
-        
-        self.fill_rect(img, 8, 4, 12, 16, armor, 0.25, 0.3)
+        color_shift = self.rng.uniform(-0.08, 0.08)
+        width_vary = self.rng.randint(-2, 2)
+        light_color = self.rng.choice([(1.0, 0.3, 0.3), (0.3, 1.0, 0.3), (0.3, 0.3, 1.0), (1.0, 1.0, 0.2)])
+
+        armor = [(0.7 + color_shift, 0.75 + color_shift, 0.8), (0.45 + color_shift, 0.5 + color_shift, 0.55), (0.25 + color_shift, 0.28 + color_shift, 0.32)]
+        armor = [tuple(max(0, min(1, c)) for c in ramp) for ramp in armor]
+        joint = [(0.5 + color_shift, 0.55 + color_shift, 0.6), (0.35 + color_shift, 0.38 + color_shift, 0.42), (0.2 + color_shift, 0.22 + color_shift, 0.25)]
+        joint = [tuple(max(0, min(1, c)) for c in ramp) for ramp in joint]
+
+        body_w = 12 + width_vary
+        arm_x = 8 + width_vary
+        self.fill_rect(img, 8, 4, body_w, 16, armor, 0.25, 0.3)
         self.fill_rect(img, 6, 8, 2, 8, joint)
-        self.fill_rect(img, 20, 8, 2, 8, joint)
-        self.fill_rect(img, 10, 20, 8, 6, armor)
-        self.fill_rect(img, 12, 2, 4, 3, joint)
-        self.put(img, 13, 8, (1.0, 0.3, 0.3))
-        self.put(img, 14, 8, (1.0, 0.3, 0.3))
-        self.fill_rect(img, 9, 12, 10, 2, self.flat((0.3, 0.32, 0.36)))
-        
+        self.fill_rect(img, 6 + body_w + 2, 8, 2, 8, joint)
+        self.fill_rect(img, 10 + width_vary, 20, 8, 6, armor)
+        self.fill_rect(img, 12 + width_vary, 2, 4, 3, joint)
+        self.put(img, 13 + width_vary, 8, light_color)
+        self.put(img, 14 + width_vary, 8, light_color)
+        self.fill_rect(img, 9 + width_vary, 12, 10, 2, self.flat((0.3, 0.32, 0.36)))
+
         self.outline(img)
         return img
     
     def generate_mech_drone(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(22, 22)
-        body = [(0.6, 0.65, 0.7), (0.4, 0.45, 0.5), (0.22, 0.25, 0.28)]
-        accent = [(0.3, 0.8, 1.0), (0.15, 0.6, 0.8), (0.08, 0.35, 0.5)]
+        cs = self.rng.uniform(-0.08, 0.08)
+        body = [(0.6 + cs, 0.65 + cs, 0.7), (0.4 + cs, 0.45 + cs, 0.5), (0.22 + cs, 0.25 + cs, 0.28)]
+        body = [tuple(max(0, min(1, c)) for c in r) for r in body]
+        accent = [(0.3, 0.8 + cs, 1.0), (0.15, 0.6 + cs, 0.8), (0.08, 0.35 + cs, 0.5)]
+        accent = [tuple(max(0, min(1, c)) for c in r) for r in accent]
         
         self.fill_poly(img, [
             (11, 2), (18, 8), (16, 18), (6, 18), (4, 8)
@@ -567,11 +628,12 @@ class SpriteGenerator:
         return img
     
     def generate_swarm_enemy(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(12, 12)
-        body = [(1.0, 0.6, 0.2), (0.9, 0.4, 0.1), (0.6, 0.25, 0.05)]
+        cs = self.rng.uniform(-0.1, 0.1)
+        body = [(1.0, 0.6 + cs, 0.2), (0.9, 0.4 + cs, 0.1), (0.6, 0.25 + cs, 0.05)]
+        body = [tuple(max(0, min(1, c)) for c in r) for r in body]
         
         self.fill_poly(img, [
             (6, 1), (10, 6), (6, 11), (2, 6)
@@ -583,14 +645,17 @@ class SpriteGenerator:
         return img
     
     def generate_boss_alien(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(80, 64)
-        body = [(0.5, 0.9, 0.4), (0.3, 0.7, 0.2), (0.15, 0.45, 0.1)]
-        shell = [(0.7, 1.0, 0.6), (0.45, 0.8, 0.3), (0.25, 0.55, 0.18)]
-        eye = [(1.0, 1.0, 0.4), (0.95, 0.85, 0.2), (0.7, 0.6, 0.1)]
-        tentacle = [(0.6, 0.95, 0.5), (0.4, 0.75, 0.3), (0.22, 0.5, 0.18)]
+        cs = self.rng.uniform(-0.08, 0.08)
+        body = [(0.5, 0.9 + cs, 0.4), (0.3, 0.7 + cs, 0.2), (0.15, 0.45 + cs, 0.1)]
+        body = [tuple(max(0, min(1, c)) for c in r) for r in body]
+        shell = [(0.7, 1.0 + cs, 0.6), (0.45, 0.8 + cs, 0.3), (0.25, 0.55 + cs, 0.18)]
+        shell = [tuple(max(0, min(1, c)) for c in r) for r in shell]
+        eye = [(1.0, 1.0, 0.4), (0.95, 0.85 + cs, 0.2), (0.7, 0.6 + cs, 0.1)]
+        tentacle = [(0.6, 0.95 + cs, 0.5), (0.4, 0.75 + cs, 0.3), (0.22, 0.5 + cs, 0.18)]
+        tentacle = [tuple(max(0, min(1, c)) for c in r) for r in tentacle]
         
         self.fill_ellipse(img, 40.0, 32.0, 30.0, 25.0, body, 0.22, 0.28)
         self.fill_poly(img, [
@@ -611,13 +676,15 @@ class SpriteGenerator:
         return img
     
     def generate_boss_mech(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(88, 72)
-        armor = [(0.65, 0.7, 0.75), (0.42, 0.47, 0.52), (0.24, 0.27, 0.3)]
-        joint = [(0.5, 0.55, 0.6), (0.35, 0.38, 0.42), (0.2, 0.22, 0.25)]
-        core = [(1.0, 0.4, 0.4), (0.85, 0.2, 0.2), (0.55, 0.1, 0.1)]
+        cs = self.rng.uniform(-0.06, 0.06)
+        armor = [(0.65 + cs, 0.7 + cs, 0.75), (0.42 + cs, 0.47 + cs, 0.52), (0.24 + cs, 0.27 + cs, 0.3)]
+        armor = [tuple(max(0, min(1, c)) for c in r) for r in armor]
+        joint = [(0.5 + cs, 0.55 + cs, 0.6), (0.35 + cs, 0.38 + cs, 0.42), (0.2 + cs, 0.22 + cs, 0.25)]
+        joint = [tuple(max(0, min(1, c)) for c in r) for r in joint]
+        core = [(1.0, 0.4 + cs, 0.4), (0.85, 0.2 + cs, 0.2), (0.55, 0.1 + cs, 0.1)]
         
         self.fill_rect(img, 20, 8, 48, 50, armor, 0.22, 0.28)
         self.fill_rect(img, 8, 20, 12, 32, armor)
@@ -635,49 +702,55 @@ class SpriteGenerator:
         return img
     
     def generate_vulcan_bullet(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(6, 14)
-        self.fill_ellipse(img, 2.5, 4.0, 2.5, 3.8, [(1, 1, 0.95), (1, 0.95, 0.5), (0.95, 0.7, 0.2)], 0.35, 0.3)
+        warmth = self.rng.uniform(-0.15, 0.15)
+        self.fill_ellipse(img, 2.5, 4.0, 2.5, 3.8, [(1, 1, 0.95), (1, 0.95 + warmth, 0.5), (0.95, 0.7 + warmth, 0.2)], 0.35, 0.3)
         for i in range(6):
             a = 0.75 - i * 0.12
-            self.put(img, 2, 8 + i, (1.0, 0.7, 0.25, a))
-            self.put(img, 3, 8 + i, (1.0, 0.7, 0.25, a))
+            self.put(img, 2, 8 + i, (1.0, 0.7 + warmth, 0.25, a))
+            self.put(img, 3, 8 + i, (1.0, 0.7 + warmth, 0.25, a))
         return img
     
     def generate_laser_bolt(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(8, 32)
-        self.fill_rect(img, 1, 4, 1, 24, self.flat((1.0, 0.4, 0.9, 0.4)))
-        self.fill_rect(img, 6, 4, 1, 24, self.flat((1.0, 0.4, 0.9, 0.4)))
-        self.fill_rect(img, 2, 2, 1, 28, self.flat((1.0, 0.45, 0.9, 0.85)))
-        self.fill_rect(img, 5, 2, 1, 28, self.flat((1.0, 0.45, 0.9, 0.85)))
-        self.fill_rect(img, 3, 1, 2, 30, self.flat((1.0, 0.95, 1.0)))
-        self.put(img, 3, 0, (1.0, 0.6, 0.95))
-        self.put(img, 4, 0, (1.0, 0.6, 0.95))
-        self.put(img, 3, 31, (1.0, 0.6, 0.95, 0.6))
-        self.put(img, 4, 31, (1.0, 0.6, 0.95, 0.6))
+        hue_shift = self.rng.uniform(-0.1, 0.1)
+        core = (1.0, 0.4 + hue_shift, 0.9)
+        core_dim = (1.0, 0.45 + hue_shift, 0.9)
+        center = (1.0, 0.95 + hue_shift, 1.0)
+        tip = (1.0, 0.6 + hue_shift, 0.95)
+        self.fill_rect(img, 1, 4, 1, 24, self.flat((core[0], core[1], core[2], 0.4)))
+        self.fill_rect(img, 6, 4, 1, 24, self.flat((core[0], core[1], core[2], 0.4)))
+        self.fill_rect(img, 2, 2, 1, 28, self.flat((core_dim[0], core_dim[1], core_dim[2], 0.85)))
+        self.fill_rect(img, 5, 2, 1, 28, self.flat((core_dim[0], core_dim[1], core_dim[2], 0.85)))
+        self.fill_rect(img, 3, 1, 2, 30, self.flat(center))
+        self.put(img, 3, 0, tip)
+        self.put(img, 4, 0, tip)
+        self.put(img, 3, 31, (tip[0], tip[1], tip[2], 0.6))
+        self.put(img, 4, 31, (tip[0], tip[1], tip[2], 0.6))
         return img
     
     def generate_spread_bullet(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(10, 10)
-        self.fill_poly(img, [(5, 0.5), (9.5, 5), (5, 9.5), (0.5, 5)],
-            [(0.85, 1, 1), (0.3, 0.85, 1), (0.1, 0.5, 0.85)], 0.32, 0.32)
+        shift = self.rng.uniform(-0.1, 0.1)
+        ramp = [(0.85 + shift, 1, 1), (0.3 + shift, 0.85, 1), (0.1 + shift, 0.5, 0.85)]
+        ramp = [tuple(max(0, min(1, c)) for c in r) for r in ramp]
+        self.fill_poly(img, [(5, 0.5), (9.5, 5), (5, 9.5), (0.5, 5)], ramp, 0.32, 0.32)
         self.fill_ellipse(img, 5.0, 5.0, 1.8, 1.8, self.flat((1, 1, 1)))
         return img
     
     def generate_missile(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(10, 18)
-        body = [(0.75, 0.78, 0.85), (0.55, 0.58, 0.66), (0.36, 0.39, 0.46)]
+        shift = self.rng.uniform(-0.08, 0.08)
+        body = [(0.75 + shift, 0.78 + shift, 0.85), (0.55 + shift, 0.58 + shift, 0.66), (0.36 + shift, 0.39 + shift, 0.46)]
+        body = [tuple(max(0, min(1, c)) for c in r) for r in body]
         self.fill_rect(img, 3, 4, 4, 9, body)
         self.fill_poly(img, [(5, 0.5), (3, 4), (7, 4)], self.flat((0.9, 0.25, 0.25)))
         self.fill_poly(img, [(1, 12), (3, 9), (3, 13)], self.flat((0.35, 0.38, 0.45)))
@@ -692,24 +765,26 @@ class SpriteGenerator:
         return img
     
     def generate_enemy_bullet(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(10, 10)
+        shift = self.rng.uniform(-0.1, 0.1)
         self.fill_ellipse(img, 4.5, 4.5, 4.4, 4.4,
-            [(1.0, 0.75, 0.85), (1.0, 0.35, 0.6), (0.75, 0.15, 0.4)], 0.3, 0.3)
+            [(1.0, 0.75 + shift, 0.85), (1.0, 0.35 + shift, 0.6), (0.75, 0.15 + shift, 0.4)], 0.3, 0.3)
         self.fill_ellipse(img, 4.5, 4.5, 2.0, 2.0, self.flat((1, 1, 1)))
         self.outline(img, (0.45, 0.05, 0.25))
         return img
     
     def generate_power_up(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(20, 20)
-        self.fill_ellipse(img, 9.5, 9.5, 9.0, 9.0,
-            [(1, 1, 1), (0.88, 0.9, 0.95), (0.62, 0.65, 0.78)], 0.3, 0.3)
-        self.fill_ellipse(img, 9.5, 9.5, 6.5, 6.5, self.flat((0.96, 0.97, 1.0)))
+        shift = self.rng.uniform(-0.1, 0.1)
+        icon_type = self.rng.randint(0, 3)
+        outer = [(1, 1, 1), (0.88 + shift, 0.9 + shift, 0.95), (0.62 + shift, 0.65 + shift, 0.78)]
+        outer = [tuple(max(0, min(1, c)) for c in r) for r in outer]
+        self.fill_ellipse(img, 9.5, 9.5, 9.0, 9.0, outer, 0.3, 0.3)
+        self.fill_ellipse(img, 9.5, 9.5, 6.5, 6.5, self.flat((0.96, 0.97 + shift, 1.0)))
         self.put(img, 6, 5, (1, 1, 1))
         self.put(img, 7, 5, (1, 1, 1))
         self.put(img, 6, 6, (1, 1, 1))
@@ -717,12 +792,12 @@ class SpriteGenerator:
         return img
     
     def generate_bomb(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
+
         img = self.new_img(12, 16)
+        cs = self.rng.uniform(-0.08, 0.08)
         self.fill_ellipse(img, 5.5, 9.0, 5.0, 5.5,
-            [(0.55, 0.58, 0.66), (0.36, 0.39, 0.47), (0.2, 0.22, 0.29)], 0.28, 0.3)
+            [(0.55 + cs, 0.58 + cs, 0.66), (0.36 + cs, 0.39 + cs, 0.47), (0.2 + cs, 0.22 + cs, 0.29)], 0.28, 0.3)
         self.fill_rect(img, 5, 2, 2, 3, self.flat((0.45, 0.48, 0.55)))
         self.put(img, 5, 1, (1.0, 0.85, 0.3))
         self.put(img, 6, 0, (1.0, 0.6, 0.15))
@@ -732,8 +807,7 @@ class SpriteGenerator:
         return img
     
     def generate_explosion_sheet(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
         
         frames = 6
         size = 32
@@ -787,8 +861,7 @@ class SpriteGenerator:
         return sheet
     
     def generate_spark_sheet(self, seed: Optional[int] = None) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
         
         sheet = self.new_img(36, 12)
         white = (1, 1, 1)
@@ -821,10 +894,7 @@ class SpriteGenerator:
         return sheet
     
     def generate_background_stars(self, seed: Optional[int] = None, width: int = 240, height: int = 360) -> Image.Image:
-        if seed is not None:
-            self.rng.seed(seed)
-        else:
-            self.rng.seed(42)
+        self.rng.seed(seed if seed is not None else 42)
         
         img = self.new_img(width, height)
         for y in range(height):
@@ -916,8 +986,7 @@ class SpriteGenerator:
     
     def generate_player_animated(self, seed: Optional[int] = None, frames: int = 4) -> Image.Image:
         """Generate animated player ship with engine thrust animation"""
-        if seed is not None:
-            self.rng.seed(seed)
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
         
         base_ship = self.generate_player_ship(seed)
         frame_width = base_ship.width
@@ -956,8 +1025,7 @@ class SpriteGenerator:
     
     def generate_enemy_animated(self, enemy_type: str, seed: Optional[int] = None, frames: int = 4) -> Image.Image:
         """Generate animated enemy sprite with idle/firing animation"""
-        if seed is not None:
-            self.rng.seed(seed)
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
         
         # Map enemy types to their generation functions
         enemy_map = {
@@ -1013,8 +1081,7 @@ class SpriteGenerator:
     
     def generate_firing_animation(self, sprite_type: str, seed: Optional[int] = None, frames: int = 6) -> Image.Image:
         """Generate firing animation with muzzle flash"""
-        if seed is not None:
-            self.rng.seed(seed)
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
         
         # Get base sprite
         sprite_map = {
@@ -1064,8 +1131,7 @@ class SpriteGenerator:
     
     def generate_damaged_state(self, sprite_type: str, seed: Optional[int] = None) -> Image.Image:
         """Generate damaged version of a sprite"""
-        if seed is not None:
-            self.rng.seed(seed)
+        self.rng.seed(seed if seed is not None else int(time.time_ns() & 0xFFFFFFFF))
         
         # Get base sprite
         sprite_map = {
